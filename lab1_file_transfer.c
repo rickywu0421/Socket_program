@@ -185,13 +185,13 @@ void udp_server(int sock)
     int get_request,cli_finish;
     int count,piece,how_many_piece,percent;
     socklen_t serv_len;
-    serv_len = sizeof(serv_addr);
     
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
-    if(bind(sock,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
+    serv_len = sizeof(serv_addr);
+    if(bind(sock,(struct sockaddr *) &serv_addr,serv_len) < 0)
        error("error on binding");
     
     fp = fopen(f_name,"rb");
@@ -200,33 +200,28 @@ void udp_server(int sock)
     piece = f_size / PIECE_NUM; 
     fseek(fp,0,SEEK_SET);
     
-    while(1){
-        if(recvfrom(sock,&get_request,sizeof(get_request),0,(struct sockaddr *)&serv_addr,&serv_len) > 0){
-            if(sendto(sock,&f_size,sizeof(f_size),0,(struct sockaddr *)&serv_addr,serv_len < 0))
-                error("error on sending filesize");
+    if(sendto(sock,&f_size,sizeof(f_size),0,(struct sockaddr *)&serv_addr,serv_len) < 0)
+        error("error on sending filesize");
 
-            count = 0;
-            how_many_piece = 0;
-            percent = 0;
-            while(!feof(fp)){
-                count++;
-                fread(buffer,EACH_TIME,EACH_TIME,fp);
-                if(sendto(sock,buffer,EACH_TIME,0,(struct sockaddr *)&serv_addr,serv_len < 0))
-                    error("error on sending file");
-                memset(buffer,0,sizeof(buffer));
-                
-                if(count == piece * (how_many_piece + 1)){
-                    percent += EACH_PERCENT;
-                    time(&timep);  
-                    p = localtime(&timep);
-                    printf("%d%s  ",percent,"%");
-                    printf("%d/%d/%d  ",(1900+p->tm_year),(1+p->tm_mon),(p->tm_mday));
-                    printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
-                    how_many_piece++;
-                }
-            }
-            break;
-         }
+    count = 0;
+    how_many_piece = 0;
+    percent = 0;
+    while(!feof(fp)){
+        count++;
+        fread(buffer,EACH_TIME,EACH_TIME,fp);
+        if(sendto(sock,buffer,EACH_TIME,0,(struct sockaddr *)&serv_addr,serv_len) < 0)
+            error("error on sending file");
+        memset(buffer,0,sizeof(buffer));
+        
+        if(count == piece * (how_many_piece + 1)){
+            percent += EACH_PERCENT;
+            time(&timep);  
+            p = localtime(&timep);
+            printf("%d%s  ",percent,"%");
+            printf("%d/%d/%d  ",(1900+p->tm_year),(1+p->tm_mon),(p->tm_mday));
+            printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
+            how_many_piece++;
+        }
     }
     while(1){
         if(recvfrom(sock,&cli_finish,sizeof(cli_finish),0,(struct sockaddr *)&serv_addr,&serv_len) > 0)
@@ -239,42 +234,47 @@ void udp_client(int sock)
     int count,piece,how_many_piece,percent;
     char output[MAX_SIZE] = "output_";
     socklen_t serv_len;
+    struct sockaddr_in my_addr;
 
     strcat(output,f_name);
+    
+    memset(&my_addr,0,sizeof(my_addr));
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = htons(0);
+   
+    if(bind(sock,(struct sockaddr *) &my_addr,sizeof(my_addr)) < 0)
+        error("error on binding");
     
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = inet_addr(serv_ip);
     serv_addr.sin_port = htons(portno);
-    if(connect(sock,(struct sockaddr *) &serv_addr,serv_len < 0))
-        error("error on connecting");
     
-
     while(1){
-        if(sendto(sock,&request,sizeof(request),0,(struct sockaddr *) &serv_addr,serv_len) > 0){
-            recvfrom(sock,&f_size,sizeof(f_size),0,(struct sockaddr *) &serv_addr,&serv_len);
-            piece = f_size / PIECE_NUM;
-            FILE *fp = fopen(output,"wb");
-            
-            count = 0;
-            how_many_piece = 0;
-            percent = 0;
-            while(recvfrom(sock,buffer,EACH_TIME,0,(struct sockaddr *) &serv_addr,&serv_len) != 0){
-                count++;
-                fwrite(buffer,EACH_TIME,EACH_TIME,fp);
-                memset(buffer,0,sizeof(buffer));
-                if(count == piece * (how_many_piece + 1)){
-                    percent += EACH_PERCENT;
-                    time(&timep);  
-                    p = localtime(&timep);
-                    
-                    printf("%d%s  ",percent,"%");
-                    printf("%d/%d/%d  ",(1900+p->tm_year),(1+p->tm_mon),(p->tm_mday));
-                    printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
-                    how_many_piece++;
-                }
-            }       
+        if(recvfrom(sock,&f_size,sizeof(f_size),0,(struct sockaddr *) &serv_addr,&serv_len) > 0)
             break;
+    }
+    
+    piece = f_size / PIECE_NUM;
+    FILE *fp = fopen(output,"wb");
+    
+    count = 0;
+    how_many_piece = 0;
+    percent = 0;
+    while(recvfrom(sock,buffer,EACH_TIME,0,(struct sockaddr *) &serv_addr,&serv_len) != 0){
+        count++;
+        fwrite(buffer,EACH_TIME,EACH_TIME,fp);
+        memset(buffer,0,sizeof(buffer));
+        if(count == piece * (how_many_piece + 1)){
+            percent += EACH_PERCENT;
+            time(&timep);  
+            p = localtime(&timep);
+            
+            printf("%d%s  ",percent,"%");
+            printf("%d/%d/%d  ",(1900+p->tm_year),(1+p->tm_mon),(p->tm_mday));
+            printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
+            how_many_piece++;
         }
     }
     while(1){
