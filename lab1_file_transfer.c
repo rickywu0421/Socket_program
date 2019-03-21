@@ -103,14 +103,14 @@ void tcp_server(int sock)
     left = f_size - 20 * piece;
     if(f_size < PIECE_NUM){
         fread(buffer,f_size,1,fp);
-        send(sock,buffer,f_size,0);
+        send(newsock,buffer,f_size,0);
     }
     else{
         while(1){
             if(++count == 21)
                 break;
             fread(buffer,piece,1,fp);
-            if(send(sock,buffer,piece,0) < 0)
+            if(send(newsock,buffer,piece,0) < 0)
                 error("error on sending file");
             memset(buffer,0,sizeof(buffer));
                 
@@ -121,7 +121,7 @@ void tcp_server(int sock)
             printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
         }
         fread(buffer,left,1,fp);
-        send(sock,buffer,left,0);
+        send(newsock,buffer,left,0);
     }    
     close(newsock);
     printf("done!\n");
@@ -239,7 +239,10 @@ void udp_server(int sock)
             printf("%d%s  ",count * 5,"%");
             printf("%d/%d/%d  ",(1900+p->tm_year),(1+p->tm_mon),(p->tm_mday));
             printf("%d:%d:%d\n",(p->tm_hour),(p->tm_min),(p->tm_sec));
+            usleep(100);
+    
         }
+        usleep(100);
         fread(buffer,left,1,fp);
         sendto(sock,buffer,left,0,(struct sockaddr *)&cli_addr,cli_len);
     }   
