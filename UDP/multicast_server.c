@@ -7,13 +7,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
-#define SIZE 1024 
+#define SIZE 1024
+#define MAX_SIZE 32
 struct sockaddr_in groupSock; 
 struct in_addr localInterface;
+int portno;
+char serv_ip[MAX_SIZE];
+
 void error(char *err);
 
 int main(int argc,char *argv[]){
-    char *fileName = argv[1]; //get file name
+    //Get host address and port number
+    strcpy(serv_ip,argv[1]);
+    portno = atoi(argv[2]);
+    
+    //get file name
+    char *fileName = argv[3]; 
     char buffer[SIZE];
     size_t f_size;
     
@@ -25,7 +34,7 @@ int main(int argc,char *argv[]){
     /* Initialize the group sockaddr structure with a  group address of 226.1.1.1 and port 8010. */
     groupSock.sin_family = AF_INET;
     groupSock.sin_addr.s_addr = inet_addr("226.1.1.1"); 
-    groupSock.sin_port = htons(8010);
+    groupSock.sin_port = htons(portno);
     
     /* Disable loopback */
     int loopBack = 0;
@@ -33,7 +42,7 @@ int main(int argc,char *argv[]){
         error("setting IP_MULTICAST_LOOP error");
 
     /* Set local interface for outbound multicast datagrams. */
-    localInterface.s_addr = inet_addr("127.0.0.1");
+    localInterface.s_addr = inet_addr(serv_ip);
     if(setsockopt(sockfd,IPPROTO_IP,IP_MULTICAST_IF,&localInterface,sizeof(localInterface)) < 0)
         error("setting local interface error");
     

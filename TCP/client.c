@@ -5,19 +5,26 @@
 #include<arpa/inet.h> 
 #include<unistd.h>    
 #define SIZE 1024
+#define MAX_SIZE 32
 struct sockaddr_in serv_addr;
-char buffer[SIZE];
 size_t f_size;
+int portno;
+char buffer[SIZE],serv_ip[MAX_SIZE];
 
-int main(){
+
+int main(int argc,char *argv[]){
+    //Get host address and port number
+    strcpy(serv_ip,argv[1]);
+    portno = atoi(argv[2]);
+    
     //Create socket
     int sockfd = socket(AF_INET,SOCK_STREAM,0);
     
     //Prepare the sockaddr_in structure
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    serv_addr.sin_port = htons(8888);
+    serv_addr.sin_addr.s_addr = inet_addr(serv_ip);
+    serv_addr.sin_port = htons(portno);
 
     //Connect to server
     if(connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0){

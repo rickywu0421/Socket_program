@@ -9,15 +9,22 @@
 #include <netdb.h>
 #include <time.h>
 #define SIZE 1024
+#define MAX_SIZE 32
 
 struct sockaddr_in localSock;
 socklen_t localLen;
 struct ip_mreq group;
 struct timeval timeout;
+int portno;
+char serv_ip[MAX_SIZE];
 
 void error(char *err);
 
-int main(){
+int main(int argc,char *argv[]){
+    //Get host address and port number
+    strcpy(serv_ip,argv[1]);
+    portno = atoi(argv[2]);
+    
     char buffer[SIZE];
     size_t f_size;
     double loseRate;
@@ -37,13 +44,13 @@ int main(){
     memset(&localSock,0,sizeof(localSock));
     localSock.sin_family = AF_INET;
     localSock.sin_addr.s_addr = INADDR_ANY;
-    localSock.sin_port = htons(8010);
+    localSock.sin_port = htons(portno);
     if(bind(sockfd,(struct sockaddr *)&localSock,sizeof(localSock)) < 0)
         error("error binding localSock");
 
     /* Join the multicast group 226.1.1.1 on the local 127.0.0.1 interface */
     group.imr_multiaddr.s_addr = inet_addr("226.1.1.1");
-    group.imr_interface.s_addr = inet_addr("127.0.0.1");
+    group.imr_interface.s_addr = inet_addr(serv_ip);
     if(setsockopt(sockfd,IPPROTO_IP,IP_ADD_MEMBERSHIP,(char *)&group,sizeof(group)) < 0)
         error("adding multicast group error");
     localLen = sizeof(localSock);
@@ -69,8 +76,10 @@ int main(){
             recvfrom(sockfd,buffer,SIZE,0,(struct sockaddr *)&localSock,&localLen);
             ++count;
         }
-        if(count == time)
+        if(count == time){
             recvfrom(sockfd,buffer,left,0,(struct sockaddr *)&localSock,&localLen);
+            ++count;    
+        }
     }
     else{
         recvfrom(sockfd,buffer,left,0,(struct sockaddr *)&localSock,&localLen);

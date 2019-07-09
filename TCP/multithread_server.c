@@ -6,17 +6,24 @@
 #include<unistd.h>    
 #include<pthread.h>
 #define SIZE 1024
+#define MAX_SIZE 32
 struct sockaddr_in serv_addr,cli_addr;
 socklen_t cli_len;
-char buffer[SIZE],fileName[64];
+int portno;
+char buffer[SIZE],fileName[MAX_SIZE],serv_ip[MAX_SIZE];
 
 /* the thread function */
 void *conn_handler(void *cli_sock);
 
 int main(int argc,char *argv[]){
     int sockfd,new_sockfd;
+    
+    //Get host address and port number
+    strcpy(serv_ip,argv[1]);
+    portno = atoi(argv[2]);
+
     //Get file name
-    strcpy(fileName,argv[1]);
+    strcpy(fileName,argv[3]);
 
     //Create socket
     sockfd = socket(AF_INET,SOCK_STREAM,0);
@@ -33,7 +40,7 @@ int main(int argc,char *argv[]){
     memset(&serv_addr,0,sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(8888);
+    serv_addr.sin_port = htons(portno);
 
     //Bind
     if(bind(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0){
